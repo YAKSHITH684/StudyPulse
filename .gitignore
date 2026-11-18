@@ -1,0 +1,26 @@
+# Tools and Virtual Environments
+.tools/
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# Database and Cache
+*.db
+*.sqlite3
+.cache/
+.pytest_cache/
+
+# OS and IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log

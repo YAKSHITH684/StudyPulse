@@ -1,0 +1,39 @@
+{
+  "model_version": "test_v3",
+  "model_path": "C:\\Users\\yaksh\\OneDrive\\Doc\\PROJECTS\\Study-Pluse\\backend\\app\\ml\\..\\..\\data\\models\\model_test_v3.joblib",
+  "explainer_path": "C:\\Users\\yaksh\\OneDrive\\Doc\\PROJECTS\\Study-Pluse\\backend\\app\\ml\\..\\..\\data\\models\\explainer_test_v3.joblib",
+  "metrics": {
+    "model_version": "test_v3",
+    "training_samples": 30,
+    "test_samples": 10,
+    "roc_auc": 1.0,
+    "recall": 1.0,
+    "precision": 1.0,
+    "high_risk_recall": 1.0,
+    "precision_at_top_20": 1.0,
+    "brier_score": 0.004,
+    "confusion_matrix": [
+      [
+        6,
+        0
+      ],
+      [
+        0,
+        4
+      ]
+    ],
+    "calibration_curve": [
+      {
+        "bin": 1,
+        "predicted_probability": 0.067,
+        "actual_probability": 0.0
+      },
+      {
+        "bin": 2,
+        "predicted_probability": 0.957,
+        "actual_probability": 1.0
+      }
+    ],
+    "trained_at": "2026-11-18T19:49:17.363469"
+  }
+}
