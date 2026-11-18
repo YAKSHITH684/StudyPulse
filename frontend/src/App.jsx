@@ -7,6 +7,8 @@ import SchoolAnalytics from './components/SchoolAnalytics';
 import ModelEvaluation from './components/ModelEvaluation';
 import ParentPortal from './components/ParentPortal';
 import DataPipelineHub from './components/DataPipelineHub';
+import LoginPage from './components/LoginPage';
+import AIChatVoiceAssistant from './components/AIChatVoiceAssistant';
 import { translations } from './i18n';
 import { api, setAuthToken } from './api';
 
@@ -15,7 +17,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [language, setLanguage] = useState('en');
   const [riskList, setRiskList] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [selectedStudentId, setSelectedStudentId] = useState(null);
   const [interventionStudent, setInterventionStudent] = useState(null);
 
@@ -28,11 +30,7 @@ export default function App() {
 
   const t = translations[language] || translations.en;
 
-  // Initial Auto-Login as Teacher (Ms. Ananya Sharma) for instant live demo experience
-  useEffect(() => {
-    switchUserPersona('teacher');
-  }, []);
-
+  // Persona switch handler
   const switchUserPersona = async (role) => {
     setLoading(true);
     try {
@@ -55,29 +53,39 @@ export default function App() {
         if (activeTab === 'parentPortal') setActiveTab('dashboard');
       }
 
-      // Reload risk list for new persona
       await loadRiskData(filters);
     } catch (err) {
-      console.error("Auto login error:", err);
-      // Fallback local demo state if backend isn't yet started
-      setUser({
-        role,
-        user_name: role === 'admin' ? 'Principal Sharma (Admin)' : role === 'teacher' ? 'Ms. Ananya Sharma' : 'Mr. Rajesh Rao',
-        assigned_grades: role === 'teacher' ? '10' : 'All',
-        assigned_sections: role === 'teacher' ? 'A,B' : 'All',
-        linked_student_id: 'STU-1004'
-      });
+      console.error("Persona switch error:", err);
     } finally {
       setLoading(false);
     }
   };
 
+  const handleLogout = () => {
+    setUser(null);
+    setAuthToken("");
+    setRiskList([]);
+  };
+
+  const handleLoginSuccess = (userData) => {
+    setUser(userData);
+    if (userData.role === 'parent') {
+      setActiveTab('parentPortal');
+    } else {
+      setActiveTab('dashboard');
+    }
+    loadRiskData();
+  };
+
   const loadRiskData = async (activeFilters = filters) => {
     try {
+      setLoading(true);
       const data = await api.getRiskList(activeFilters);
       setRiskList(data);
     } catch (err) {
       console.error("Error loading risk list:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -88,11 +96,22 @@ export default function App() {
     }
   }, [filters, user]);
 
+  // If user is not logged in, render LoginPage!
+  if (!user) {
+    return (
+      <div className="relative">
+        <LoginPage onLoginSuccess={handleLoginSuccess} t={t} />
+        {/* Floating AI Voice Agent available even on login */}
+        <AIChatVoiceAssistant currentStudentId={null} language={language} />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col text-slate-800">
       <Navbar
         user={user}
-        onLogout={() => switchUserPersona('teacher')}
+        onLogout={handleLogout}
         onSwitchRole={switchUserPersona}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -164,13 +183,18 @@ export default function App() {
           onSuccess={() => {
             loadRiskData(filters);
             if (selectedStudentId) {
-              // Trigger reload in student modal
               setSelectedStudentId(selectedStudentId);
             }
           }}
           user={user}
         />
       )}
+
+      {/* Floating AI Voice Agent */}
+      <AIChatVoiceAssistant 
+        currentStudentId={selectedStudentId} 
+        language={language} 
+      />
     </div>
   );
 }

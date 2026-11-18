@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .database import engine, Base, SessionLocal
 from .models import User
 from .auth import get_password_hash
-from .routers import auth, students, risk, interventions, data_pipeline, analytics, audit
+from .routers import auth, students, risk, interventions, data_pipeline, analytics, audit, chatbot
 
 # Create DB tables
 Base.metadata.create_all(bind=engine)
@@ -32,6 +32,7 @@ app.include_router(interventions.router)
 app.include_router(data_pipeline.router)
 app.include_router(analytics.router)
 app.include_router(audit.router)
+app.include_router(chatbot.router)
 
 @app.on_event("startup")
 def init_default_users():

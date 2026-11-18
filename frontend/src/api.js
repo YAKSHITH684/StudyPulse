@@ -179,4 +179,15 @@ export const api = {
   },
 
   getExportLabelsUrl: () => `${API_BASE}/export/labels`,
+
+  // AI Chat & Voice Assistant
+  sendMessage: async (message, studentId = null, language = "en") => {
+    const res = await fetch(`${API_BASE}/chat`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ message, student_id: studentId, language }),
+    });
+    if (!res.ok) throw new Error("Chat request failed");
+    return res.json();
+  },
 };
