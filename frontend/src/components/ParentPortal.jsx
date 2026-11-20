@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Heart, Calendar, BookOpen, MessageSquare, Phone, Mail, 
-  Award, CheckCircle2, AlertCircle, Sparkles, User 
+  Award, CheckCircle2, AlertCircle, Sparkles, User, Languages 
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine } from 'recharts';
 import { api } from '../api';
+import { INDIC_LANGUAGES } from '../i18n';
 
 export default function ParentPortal({ user, t }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [parentLang, setParentLang] = useState('hi');
+  const [regionalAlert, setRegionalAlert] = useState(null);
 
   useEffect(() => {
     // Parent's linked child is STU-1004 (Aryan Rao)
@@ -23,6 +26,13 @@ export default function ParentPortal({ user, t }) {
         setLoading(false);
       });
   }, [user]);
+
+  useEffect(() => {
+    const childId = user?.linked_student_id || 'STU-1004';
+    api.generateParentAlert(childId, parentLang)
+      .then(res => setRegionalAlert(res))
+      .catch(err => console.error(err));
+  }, [parentLang, user]);
 
   if (loading) {
     return (
@@ -42,17 +52,47 @@ export default function ParentPortal({ user, t }) {
       {/* Welcome Banner */}
       <div className="bg-gradient-to-r from-emerald-700 via-teal-700 to-emerald-800 rounded-3xl p-6 text-white shadow-md relative overflow-hidden">
         <div className="relative z-10 space-y-2">
-          <div className="inline-flex items-center space-x-1.5 px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs font-semibold">
-            <Heart className="w-3.5 h-3.5 text-rose-300 fill-rose-300" />
-            <span>Parent-School Partnership Portal</span>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="inline-flex items-center space-x-1.5 px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs font-semibold">
+              <Heart className="w-3.5 h-3.5 text-rose-300 fill-rose-300" />
+              <span>Parent-School Partnership Portal</span>
+            </div>
+
+            {/* Regional Language Switcher for Parents */}
+            <div className="flex items-center space-x-1.5 bg-black/20 backdrop-blur-md px-3 py-1 rounded-xl text-xs">
+              <Languages className="w-3.5 h-3.5 text-emerald-200" />
+              <span className="text-[11px] text-emerald-100 font-medium">Home Language:</span>
+              <select
+                value={parentLang}
+                onChange={(e) => setParentLang(e.target.value)}
+                className="bg-transparent text-white font-bold focus:outline-none cursor-pointer"
+              >
+                {INDIC_LANGUAGES.map(l => (
+                  <option key={l.code} value={l.code} className="text-slate-800">
+                    {l.nativeName} ({l.name})
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
+
           <h2 className="text-2xl font-black">
-            Namaste, {student?.parent_name || 'Guardian'}!
+            {regionalAlert?.greeting || 'Namaste'}, {student?.parent_name || 'Guardian'}!
           </h2>
           <p className="text-xs sm:text-sm text-emerald-100 max-w-xl">
             Here is the transparent learning progress for <strong>{student?.name}</strong> (Grade {student?.grade} - Section {student?.section}).
             Our teachers and counselors are working with your family to nurture your child's success.
           </p>
+
+          {regionalAlert && (
+            <div className="mt-3 p-3.5 bg-white/15 backdrop-blur-md rounded-xl border border-white/20 text-xs text-white leading-relaxed">
+              <div className="font-bold text-[11px] text-emerald-200 mb-1 flex items-center">
+                <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
+                {regionalAlert.native_language} Parent Care Notice:
+              </div>
+              {regionalAlert.message}
+            </div>
+          )}
         </div>
       </div>
 

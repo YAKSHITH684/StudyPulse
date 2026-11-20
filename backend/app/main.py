@@ -1,17 +1,20 @@
 import os
+from dotenv import load_dotenv
+load_dotenv()
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .database import engine, Base, SessionLocal
 from .models import User
 from .auth import get_password_hash
-from .routers import auth, students, risk, interventions, data_pipeline, analytics, audit, chatbot
+from .routers import auth, students, risk, interventions, data_pipeline, analytics, audit, chatbot, tutor, multilingual, llm
 
 # Create DB tables
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="StudyPulse API",
-    description="AI Early-Warning System for Student Dropout - PRASUNEX INNOVATHON 2026",
+    description="AI Early-Warning System for Student Dropout",
     version="1.0.0"
 )
 
@@ -33,6 +36,9 @@ app.include_router(data_pipeline.router)
 app.include_router(analytics.router)
 app.include_router(audit.router)
 app.include_router(chatbot.router)
+app.include_router(tutor.router)
+app.include_router(multilingual.router)
+app.include_router(llm.router)
 
 @app.on_event("startup")
 def init_default_users():
@@ -83,16 +89,40 @@ def init_default_users():
     finally:
         db.close()
 
-@app.get("/")
-def root():
-    return {
-        "name": "StudyPulse API",
-        "tagline": "Detect Early. Explain Clearly. Act in Time.",
-        "version": "1.0.0",
-        "event": "PRASUNEX INNOVATHON 2026 – Round 3",
-        "status": "online"
-    }
+from pathlib import Path
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 @app.get("/health")
 def health():
     return {"status": "healthy"}
+
+# Serve frontend build if dist directory exists (e.g. for Render single-service deployment)
+dist_paths = [
+    Path(__file__).resolve().parent.parent.parent / "frontend" / "dist",
+    Path("frontend/dist"),
+    Path("dist")
+]
+frontend_dist = next((p for p in dist_paths if p.exists() and (p / "index.html").exists()), None)
+
+if frontend_dist:
+    assets_dir = frontend_dist / "assets"
+    if assets_dir.exists():
+        app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="static_assets")
+
+    @app.get("/{full_path:path}")
+    def serve_frontend_spa(full_path: str):
+        if full_path:
+            target_file = frontend_dist / full_path
+            if target_file.exists() and target_file.is_file():
+                return FileResponse(target_file)
+        return FileResponse(frontend_dist / "index.html")
+else:
+    @app.get("/")
+    def root():
+        return {
+            "name": "StudyPulse API",
+            "tagline": "Detect Early. Explain Clearly. Act in Time.",
+            "version": "1.0.0",
+            "status": "online"
+        }

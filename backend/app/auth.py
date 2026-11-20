@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from .database import get_db
 from .models import User
 
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "studypulse-super-secret-innovathon-2026-key")
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "studypulse-production-secret-key-2026")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
 

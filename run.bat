@@ -2,7 +2,6 @@
 title StudyPulse - Early Warning System
 echo ========================================================
 echo   STUDYPULSE - AI Early-Warning System for Student Dropout
-echo   PRASUNEX INNOVATHON 2026 - Round 3
 echo ========================================================
 echo.
 

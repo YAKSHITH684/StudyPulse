@@ -17,6 +17,28 @@ class LoginRequest(BaseModel):
     email: str
     password: str
 
+class UserRegisterRequest(BaseModel):
+    full_name: str
+    email: str
+    password: str
+    role: str = "teacher"  # admin, teacher, parent
+    assigned_grades: Optional[str] = "All"
+    assigned_sections: Optional[str] = "All"
+    linked_student_id: Optional[str] = None
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+class ResetPasswordRequest(BaseModel):
+    email: str
+    reset_token: str
+    new_password: str
+
+class PasswordResetResponse(BaseModel):
+    status: str
+    message: str
+    reset_token: Optional[str] = None  # Returned for demo convenience
+
 class UserResponse(BaseModel):
     id: int
     email: str

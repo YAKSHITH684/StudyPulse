@@ -1,9 +1,6 @@
 # STUDYPULSE – TECHNICAL SPECIFICATION SHEET
 
 **AI Early-Warning System for Student Dropout**  
-**Event:** PRASUNEX INNOVATHON 2026 – Round 3  
-**Team Lead:** Anandapu Yakshith
-
 **Tagline:** Detect Early. Explain Clearly. Act in Time.
 
 ## 1. Project Overview

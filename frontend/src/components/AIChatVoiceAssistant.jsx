@@ -5,6 +5,7 @@ import {
   Check, Play, Square, Radio 
 } from 'lucide-react';
 import { api } from '../api';
+import { INDIC_LANGUAGES } from '../i18n';
 
 export default function AIChatVoiceAssistant({ currentStudentId, language = "en" }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -46,7 +47,8 @@ export default function AIChatVoiceAssistant({ currentStudentId, language = "en"
       const recognition = new SpeechRecognition();
       recognition.continuous = false;
       recognition.interimResults = false;
-      recognition.lang = language === 'hi' ? 'hi-IN' : language === 'te' ? 'te-IN' : 'en-IN';
+      const langMeta = INDIC_LANGUAGES.find(l => l.code === language) || { bcp47: 'en-IN' };
+      recognition.lang = langMeta.bcp47;
 
       recognition.onstart = () => {
         setIsListening(true);
@@ -89,7 +91,8 @@ export default function AIChatVoiceAssistant({ currentStudentId, language = "en"
     const utterance = new SpeechSynthesisUtterance(cleanText);
     utterance.rate = 1.0;
     utterance.pitch = 1.0;
-    utterance.lang = language === 'hi' ? 'hi-IN' : language === 'te' ? 'te-IN' : 'en-IN';
+    const langMeta = INDIC_LANGUAGES.find(l => l.code === language) || { bcp47: 'en-IN' };
+    utterance.lang = langMeta.bcp47;
 
     utterance.onstart = () => setIsSpeaking(true);
     utterance.onend = () => setIsSpeaking(false);
@@ -181,17 +184,19 @@ export default function AIChatVoiceAssistant({ currentStudentId, language = "en"
     <>
       {/* Floating Trigger Button (Bottom-Right) */}
       {!isOpen && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center space-x-2 animate-bounce-subtle">
+        <div className="fixed bottom-6 right-6 z-50 flex items-center space-x-2">
           <button
             onClick={() => setIsOpen(true)}
-            className="group flex items-center space-x-2.5 px-4 py-3 bg-gradient-to-r from-sky-600 via-indigo-600 to-sky-600 hover:from-sky-700 hover:to-indigo-700 text-white rounded-full shadow-xl shadow-sky-600/30 transition-all transform hover:scale-105 border border-white/20"
+            className="group flex items-center space-x-2.5 px-4.5 py-3 bg-gradient-to-r from-sky-600 via-indigo-600 to-violet-700 hover:from-sky-500 hover:to-indigo-600 text-white rounded-full shadow-lg shadow-indigo-600/30 ring-4 ring-indigo-500/15 hover:ring-indigo-500/30 transition-all duration-300 transform hover:scale-105 border border-white/30"
           >
             <div className="relative">
-              <Bot className="w-5 h-5" />
-              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-400 border-2 border-white rounded-full" />
+              <Bot className="w-5 h-5 text-white" />
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-400 border-2 border-white rounded-full animate-pulse" />
             </div>
-            <span className="text-xs font-bold tracking-wide hidden sm:inline">AI Voice Agent</span>
-            <Mic className="w-4 h-4 text-sky-200 group-hover:text-white" />
+            <span className="text-xs font-extrabold tracking-wide hidden sm:inline">AI Voice Counselor</span>
+            <div className="p-1 rounded-full bg-white/15 group-hover:bg-white/25 transition-colors">
+              <Mic className="w-3.5 h-3.5 text-sky-200 group-hover:text-white" />
+            </div>
           </button>
         </div>
       )}
@@ -213,11 +218,16 @@ export default function AIChatVoiceAssistant({ currentStudentId, language = "en"
                 <div className="flex items-center space-x-1.5">
                   <h3 className="font-bold text-sm">StudyPulse AI</h3>
                   <span className="text-[10px] font-semibold bg-sky-500/20 text-sky-300 px-1.5 py-0.2 rounded border border-sky-400/20">
-                    Voice Agent
+                    Multilingual
+                  </span>
+                  <span className="text-[10px] font-bold bg-amber-400/20 text-amber-300 px-1.5 py-0.2 rounded border border-amber-400/20">
+                    ⚡ Groq Llama
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-400 flex items-center space-x-1">
-                  <span>Dropout Early-Warning Assistant</span>
+                <p className="text-[10px] text-slate-300 flex items-center space-x-1">
+                  <span className="text-sky-300 font-semibold">{INDIC_LANGUAGES.find(l => l.code === language)?.nativeName || 'English'}</span>
+                  <span>•</span>
+                  <span className="text-emerald-400">Code-mixing ready</span>
                 </p>
               </div>
             </div>

@@ -1,9 +1,53 @@
 import React, { useState } from 'react';
 import { 
   Database, RefreshCw, UploadCloud, Play, Sparkles, 
-  CheckCircle2, AlertTriangle, FileSpreadsheet, ShieldCheck 
+  CheckCircle2, AlertTriangle, FileSpreadsheet, ShieldCheck, 
+  Download, ArrowDownToLine, Zap, FileText, Check 
 } from 'lucide-react';
 import { api } from '../api';
+
+const SAMPLE_DATASETS = [
+  {
+    id: 'students',
+    name: '1. Students Master Roster',
+    filename: '1_students_master.csv',
+    description: '100 student records with anonymized IDs, grades, sections, gender, and parent contacts.',
+    rows: '100 rows',
+    color: 'from-blue-50 to-white border-blue-200 text-blue-700'
+  },
+  {
+    id: 'attendance',
+    name: '2. Weekly Attendance Log',
+    filename: '2_weekly_attendance.csv',
+    description: '8-week history of days present, absent, tardy, and weekly attendance percentage.',
+    rows: '788 records',
+    color: 'from-sky-50 to-white border-sky-200 text-sky-700'
+  },
+  {
+    id: 'marks',
+    name: '3. Academic Marks & Assessments',
+    filename: '3_academic_marks.csv',
+    description: 'Weekly test scores across Math, Science, English, Social Science vs class averages.',
+    rows: '3,152 marks',
+    color: 'from-indigo-50 to-white border-indigo-200 text-indigo-700'
+  },
+  {
+    id: 'behavior',
+    name: '4. Behavior & Incidents Log',
+    filename: '4_behavior_and_incidents.csv',
+    description: 'Classroom incident records, severity ratings (1-3), and late arrivals to assembly.',
+    rows: '788 records',
+    color: 'from-amber-50 to-white border-amber-200 text-amber-700'
+  },
+  {
+    id: 'engagement',
+    name: '5. Digital Learning Engagement',
+    filename: '5_digital_engagement.csv',
+    description: 'Weekly LMS portal login frequencies, assignments completed on-time vs late submissions.',
+    rows: '788 records',
+    color: 'from-emerald-50 to-white border-emerald-200 text-emerald-700'
+  }
+];
 
 export default function DataPipelineHub({ onPipelineSuccess, t }) {
   const [runningPipeline, setRunningPipeline] = useState(false);
@@ -12,6 +56,7 @@ export default function DataPipelineHub({ onPipelineSuccess, t }) {
   const [uploadStatus, setUploadStatus] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
   const [datasetType, setDatasetType] = useState('students');
+  const [quickLoading, setQuickLoading] = useState(null);
 
   const handleGenerateSynthetic = async () => {
     setGeneratingData(true);
@@ -52,10 +97,29 @@ export default function DataPipelineHub({ onPipelineSuccess, t }) {
     setUploadStatus({ loading: true });
     try {
       const res = await api.uploadCsv(selectedFile, datasetType);
-      setUploadStatus({ success: true, message: `Successfully loaded ${res.rows_inserted} rows of ${res.dataset_type} data!` });
+      setUploadStatus({ 
+        success: true, 
+        message: `Successfully loaded ${res.rows_inserted} rows of ${res.dataset_type} data!` 
+      });
       setSelectedFile(null);
     } catch (err) {
       setUploadStatus({ error: err.message || "Failed to upload CSV" });
+    }
+  };
+
+  const handleQuickLoad = async (type) => {
+    setQuickLoading(type);
+    try {
+      const res = await api.quickLoadSample(type);
+      setUploadStatus({ success: true, message: res.message });
+      // Trigger pipeline re-run to incorporate fresh data
+      const pipeRes = await api.runPipeline();
+      setPipelineOutput(pipeRes);
+      onPipelineSuccess();
+    } catch (err) {
+      setUploadStatus({ error: err.message || "Quick load failed" });
+    } finally {
+      setQuickLoading(null);
     }
   };
 
@@ -72,6 +136,71 @@ export default function DataPipelineHub({ onPipelineSuccess, t }) {
         </p>
       </div>
 
+      {/* 1. SAMPLE CSV DATASETS SECTION (Requested 3-4 CSVs) */}
+      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+          <div>
+            <div className="flex items-center space-x-2">
+              <FileSpreadsheet className="w-5 h-5 text-emerald-600" />
+              <h3 className="font-bold text-slate-900 text-sm">Sample CSV Datasets & Templates</h3>
+            </div>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Download realistic multi-week school datasets or test 1-click ingestion:
+            </p>
+          </div>
+          <button
+            onClick={() => handleQuickLoad('all')}
+            disabled={quickLoading !== null}
+            className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center space-x-1.5 shrink-0"
+          >
+            <Zap className={`w-3.5 h-3.5 ${quickLoading === 'all' ? 'animate-spin' : ''}`} />
+            <span>{quickLoading === 'all' ? 'Loading Cohort...' : '1-Click Ingest All 5 Datasets'}</span>
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {SAMPLE_DATASETS.map((ds) => (
+            <div 
+              key={ds.id} 
+              className={`p-4 rounded-xl border bg-gradient-to-br ${ds.color} shadow-xs flex flex-col justify-between space-y-3`}
+            >
+              <div>
+                <div className="flex items-start justify-between">
+                  <h4 className="font-bold text-slate-900 text-xs sm:text-sm">{ds.name}</h4>
+                  <span className="text-[10px] font-semibold px-2 py-0.5 bg-white/80 rounded border border-slate-200 text-slate-600">
+                    {ds.rows}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">{ds.description}</p>
+                <div className="text-[11px] font-mono text-slate-400 mt-2">
+                  📄 {ds.filename}
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-slate-200/60 flex items-center space-x-2">
+                <a
+                  href={api.getSampleCsvUrl(ds.id)}
+                  download={ds.filename}
+                  className="flex-1 py-1.5 px-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center space-x-1 shadow-2xs"
+                >
+                  <Download className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Download</span>
+                </a>
+                <button
+                  onClick={() => handleQuickLoad(ds.id)}
+                  disabled={quickLoading !== null}
+                  className="flex-1 py-1.5 px-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold transition-colors flex items-center justify-center space-x-1"
+                >
+                  <Zap className={`w-3.5 h-3.5 text-amber-400 ${quickLoading === ds.id ? 'animate-spin' : ''}`} />
+                  <span>{quickLoading === ds.id ? 'Loading...' : 'Quick Ingest'}</span>
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 2. PIPELINE AUTOMATION CONTROLS */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Left: Pipeline Triggers */}
         <div className="space-y-4">
@@ -142,11 +271,13 @@ export default function DataPipelineHub({ onPipelineSuccess, t }) {
                 <select
                   value={datasetType}
                   onChange={(e) => setDatasetType(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium"
                 >
-                  <option value="students">Students Master CSV (student_id, name, grade, section)</option>
-                  <option value="attendance">Weekly Attendance CSV (student_id, week_number, days_present)</option>
-                  <option value="marks">Weekly Marks CSV (student_id, week_number, subject, score)</option>
+                  <option value="students">1. Students Master CSV (student_id, name, grade, section)</option>
+                  <option value="attendance">2. Weekly Attendance CSV (student_id, week_number, days_present)</option>
+                  <option value="marks">3. Weekly Marks CSV (student_id, week_number, subject, score)</option>
+                  <option value="behavior">4. Behavioral Incidents CSV (student_id, week_number, incident_count)</option>
+                  <option value="engagement">5. Digital Engagement CSV (student_id, week_number, portal_logins)</option>
                 </select>
               </div>
 
@@ -161,13 +292,15 @@ export default function DataPipelineHub({ onPipelineSuccess, t }) {
               </div>
 
               {uploadStatus?.message && (
-                <div className="p-2.5 bg-emerald-50 text-emerald-800 rounded-xl font-medium">
-                  {uploadStatus.message}
+                <div className="p-2.5 bg-emerald-50 text-emerald-800 rounded-xl font-medium flex items-center space-x-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>{uploadStatus.message}</span>
                 </div>
               )}
               {uploadStatus?.error && (
-                <div className="p-2.5 bg-rose-50 text-rose-800 rounded-xl font-medium">
-                  {uploadStatus.error}
+                <div className="p-2.5 bg-rose-50 text-rose-800 rounded-xl font-medium flex items-center space-x-1.5">
+                  <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                  <span>{uploadStatus.error}</span>
                 </div>
               )}
 
@@ -199,8 +332,12 @@ export default function DataPipelineHub({ onPipelineSuccess, t }) {
                 <p>• High Risk Flagged: <strong className="text-rose-400">{pipelineOutput.high_risk_count}</strong></p>
                 <p>• Medium Risk Watchlist: <strong className="text-amber-400">{pipelineOutput.medium_risk_count}</strong></p>
                 <p>• Low Risk On-Track: <strong className="text-emerald-400">{pipelineOutput.low_risk_count}</strong></p>
-                <p>• High-Risk Recall: <strong>{(pipelineOutput.metrics.high_risk_recall * 100).toFixed(1)}%</strong></p>
-                <p>• Model Version: <strong>{pipelineOutput.metrics.model_version}</strong></p>
+                {pipelineOutput.metrics && (
+                  <>
+                    <p>• High-Risk Recall: <strong>{(pipelineOutput.metrics.high_risk_recall * 100).toFixed(1)}%</strong></p>
+                    <p>• Model Version: <strong>{pipelineOutput.metrics.model_version}</strong></p>
+                  </>
+                )}
                 <p className="text-slate-400 pt-1">• Exactly 3 SHAP reasons computed for every student.</p>
               </div>
             </div>

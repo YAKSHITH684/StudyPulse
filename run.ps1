@@ -1,7 +1,6 @@
 # StudyPulse Launch Script for Windows PowerShell
 Write-Host "========================================================" -ForegroundColor Cyan
 Write-Host "  STUDYPULSE - AI Early-Warning System for Student Dropout" -ForegroundColor Cyan
-Write-Host "  PRASUNEX INNOVATHON 2026 - Round 3" -ForegroundColor Cyan
 Write-Host "========================================================" -ForegroundColor Cyan
 
 $env:PATH = "$PSScriptRoot\.tools\nodejs;$env:PATH"

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   X, AlertTriangle, CheckCircle, Clock, TrendingUp, TrendingDown, 
   Sparkles, Sliders, Calendar, BookOpen, User, Phone, Mail,
-  PlusCircle, Activity, Award, ShieldAlert, Check
+  PlusCircle, Activity, Award, ShieldAlert, Check, HelpCircle 
 } from 'lucide-react';
 import { 
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, 
@@ -18,8 +18,10 @@ export default function StudentDetailModal({
   t 
 }) {
   const [data, setData] = useState(null);
+  const [timelineData, setTimelineData] = useState(null);
+  const [studyPlan, setStudyPlan] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('insights'); // 'insights', 'simulator', 'interventions'
+  const [activeTab, setActiveTab] = useState('insights'); // 'insights', 'timeline', 'simulator', 'studyPlan', 'interventions'
   const [suggestions, setSuggestions] = useState([]);
 
   useEffect(() => {
@@ -27,10 +29,14 @@ export default function StudentDetailModal({
     setLoading(true);
     Promise.all([
       api.getStudentDetail(studentId),
-      api.getSuggestions(studentId)
-    ]).then(([detail, suggs]) => {
+      api.getSuggestions(studentId),
+      api.getStudentTimeline(studentId).catch(() => null),
+      api.getStudyPlan(studentId).catch(() => null)
+    ]).then(([detail, suggs, timeline, plan]) => {
       setData(detail);
       setSuggestions(suggs);
+      setTimelineData(timeline);
+      setStudyPlan(plan);
       setLoading(false);
     }).catch(err => {
       console.error(err);
@@ -85,22 +91,35 @@ export default function StudentDetailModal({
           </button>
         </div>
 
-        {/* Modal Nav Tabs */}
-        <div className="px-6 border-b border-slate-200 bg-slate-50 flex space-x-4 text-xs sm:text-sm font-semibold">
+        {/* Modal Nav Tabs (5 Rich Tabs) */}
+        <div className="px-6 border-b border-slate-200 bg-slate-50 flex space-x-2 sm:space-x-4 overflow-x-auto text-xs sm:text-sm font-semibold scrollbar-none">
           <button
             onClick={() => setActiveTab('insights')}
-            className={`py-3.5 border-b-2 transition-all flex items-center space-x-2 ${
+            className={`py-3.5 border-b-2 transition-all flex items-center space-x-1.5 shrink-0 ${
               activeTab === 'insights'
                 ? 'border-sky-600 text-sky-700'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
             <Sparkles className="w-4 h-4 text-sky-600" />
-            <span>AI Risk & Performance Insights</span>
+            <span>AI Risk & SHAP Reasons</span>
           </button>
+
+          <button
+            onClick={() => setActiveTab('timeline')}
+            className={`py-3.5 border-b-2 transition-all flex items-center space-x-1.5 shrink-0 ${
+              activeTab === 'timeline'
+                ? 'border-indigo-600 text-indigo-700'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Clock className="w-4 h-4 text-indigo-600" />
+            <span>Predictive Timeline</span>
+          </button>
+
           <button
             onClick={() => setActiveTab('simulator')}
-            className={`py-3.5 border-b-2 transition-all flex items-center space-x-2 ${
+            className={`py-3.5 border-b-2 transition-all flex items-center space-x-1.5 shrink-0 ${
               activeTab === 'simulator'
                 ? 'border-sky-600 text-sky-700'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -109,16 +128,29 @@ export default function StudentDetailModal({
             <Sliders className="w-4 h-4 text-indigo-600" />
             <span>What-If Simulator</span>
           </button>
+
+          <button
+            onClick={() => setActiveTab('studyPlan')}
+            className={`py-3.5 border-b-2 transition-all flex items-center space-x-1.5 shrink-0 ${
+              activeTab === 'studyPlan'
+                ? 'border-indigo-600 text-indigo-700'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <BookOpen className="w-4 h-4 text-indigo-600" />
+            <span>AI Study Planner</span>
+          </button>
+
           <button
             onClick={() => setActiveTab('interventions')}
-            className={`py-3.5 border-b-2 transition-all flex items-center space-x-2 ${
+            className={`py-3.5 border-b-2 transition-all flex items-center space-x-1.5 shrink-0 ${
               activeTab === 'interventions'
-                ? 'border-sky-600 text-sky-700'
+                ? 'border-emerald-600 text-emerald-700'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
             <Award className="w-4 h-4 text-emerald-600" />
-            <span>Interventions & Action Plan ({data?.interventions?.length || 0})</span>
+            <span>Interventions ({data?.interventions?.length || 0})</span>
           </button>
         </div>
 
@@ -127,15 +159,15 @@ export default function StudentDetailModal({
           {loading ? (
             <div className="py-20 text-center text-slate-400">
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-sky-500 border-t-transparent mb-3" />
-              <p className="text-sm font-medium">Loading comprehensive student profile...</p>
+              <p className="text-sm font-medium">Loading comprehensive student profile & AI forecast...</p>
             </div>
           ) : (
             <>
+              {/* TAB 1: AI INSIGHTS & EXACT 3 SHAP REASONS */}
               {activeTab === 'insights' && (
                 <div className="space-y-6">
                   {/* Top Stats Banner */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    {/* Risk Score */}
                     <div className={`p-4 rounded-2xl border ${
                       data.risk_score?.risk_tier === 'High' ? 'bg-rose-50/70 border-rose-200' :
                       data.risk_score?.risk_tier === 'Medium' ? 'bg-amber-50/70 border-amber-200' :
@@ -159,7 +191,6 @@ export default function StudentDetailModal({
                       </p>
                     </div>
 
-                    {/* Attendance Metric */}
                     <div className="p-4 rounded-2xl border border-slate-200 bg-white shadow-sm">
                       <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Latest Attendance
@@ -172,7 +203,6 @@ export default function StudentDetailModal({
                       </p>
                     </div>
 
-                    {/* Academic Metric */}
                     <div className="p-4 rounded-2xl border border-slate-200 bg-white shadow-sm">
                       <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Core Subjects Average
@@ -186,7 +216,7 @@ export default function StudentDetailModal({
                     </div>
                   </div>
 
-                  {/* EXPLAINABLE AI (SHAP) SECTION - EXACTLY 3 REASONS */}
+                  {/* SHAP Attribution: Exactly 3 Plain Language Reasons */}
                   <div className="bg-gradient-to-br from-indigo-50/50 via-sky-50/30 to-white rounded-2xl p-5 border border-indigo-100 shadow-sm">
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center space-x-2">
@@ -199,9 +229,6 @@ export default function StudentDetailModal({
                         TreeExplainer Verified
                       </span>
                     </div>
-                    <p className="text-xs text-slate-600 mb-4">
-                      Every prediction returns exactly three understandable contributing reasons explaining why this student was classified at this risk level:
-                    </p>
 
                     <div className="space-y-3">
                       {data.risk_score?.top_factors?.map((reason, idx) => (
@@ -230,7 +257,6 @@ export default function StudentDetailModal({
                             </div>
                           </div>
 
-                          {/* Visual Weight Bar */}
                           <div className="sm:w-36 shrink-0 text-right">
                             <div className="flex justify-between sm:justify-end gap-2 text-xs font-semibold text-slate-500 mb-1">
                               <span>Impact:</span>
@@ -250,13 +276,12 @@ export default function StudentDetailModal({
 
                   {/* Historical Charts */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Attendance Trend Chart */}
                     <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
                       <h4 className="text-sm font-bold text-slate-800 mb-1 flex items-center">
                         <Calendar className="w-4 h-4 mr-1.5 text-sky-600" />
                         8-Week Attendance Trend (%)
                       </h4>
-                      <p className="text-xs text-slate-500 mb-4">Red dashed line shows minimum safe threshold (75%)</p>
+                      <p className="text-xs text-slate-500 mb-4">Minimum safe threshold: 75%</p>
                       <div className="h-48 w-full">
                         <ResponsiveContainer width="100%" height="100%">
                           <LineChart data={data.attendance_history}>
@@ -271,7 +296,6 @@ export default function StudentDetailModal({
                       </div>
                     </div>
 
-                    {/* Academic Performance vs Section Average */}
                     <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
                       <h4 className="text-sm font-bold text-slate-800 mb-1 flex items-center">
                         <BookOpen className="w-4 h-4 mr-1.5 text-indigo-600" />
@@ -296,6 +320,49 @@ export default function StudentDetailModal({
                 </div>
               )}
 
+              {/* TAB 2: PREDICTIVE DROPOUT TIMELINE */}
+              {activeTab === 'timeline' && timelineData && (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="bg-white p-4 rounded-xl border border-slate-200">
+                      <span className="text-xs font-bold text-slate-400 uppercase">Current Risk</span>
+                      <div className="text-2xl font-black text-slate-900 mt-1">{timelineData.current_probability}%</div>
+                    </div>
+                    <div className="bg-rose-50 border border-rose-200 p-4 rounded-xl text-rose-900">
+                      <span className="text-xs font-bold uppercase">Estimated Dropout Critical Point</span>
+                      <div className="text-2xl font-black mt-1">{timelineData.estimated_critical_point}</div>
+                      <p className="text-[11px] opacity-80">Without intervention</p>
+                    </div>
+                    <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-xl text-emerald-900">
+                      <span className="text-xs font-bold uppercase">4-Week Recovery Trajectory</span>
+                      <div className="text-2xl font-black mt-1">
+                        {timelineData.timeline_forecast[timelineData.timeline_forecast.length - 1]?.projected_risk_with_intervention}%
+                      </div>
+                      <p className="text-[11px] opacity-80">With recommended action plan</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-5 rounded-2xl border border-slate-200 space-y-3">
+                    <h4 className="font-bold text-slate-900 text-sm">4-Week Forward Trajectory: Status Quo vs. Intervention</h4>
+                    <div className="h-64 w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={timelineData.timeline_forecast}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                          <XAxis dataKey="week_label" tick={{ fontSize: 11 }} />
+                          <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} />
+                          <Tooltip formatter={(val) => [`${val}%`, '']} />
+                          <Legend wrapperStyle={{ fontSize: 11 }} />
+                          <ReferenceLine y={75} stroke="#ef4444" strokeDasharray="4 4" label={{ value: '75% Critical', fill: '#ef4444', fontSize: 10 }} />
+                          <Line type="monotone" dataKey="projected_risk_unaddressed" name="Status Quo (No Action)" stroke="#ef4444" strokeWidth={3} />
+                          <Line type="monotone" dataKey="projected_risk_with_intervention" name="With Targeted Intervention" stroke="#10b981" strokeWidth={3} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 3: WHAT-IF SIMULATOR */}
               {activeTab === 'simulator' && (
                 <WhatIfSimulator 
                   studentId={studentId} 
@@ -303,17 +370,54 @@ export default function StudentDetailModal({
                 />
               )}
 
+              {/* TAB 4: AI PERSONALIZED STUDY PLANNER */}
+              {activeTab === 'studyPlan' && studyPlan && (
+                <div className="space-y-6">
+                  <div className="bg-indigo-50/60 border border-indigo-200 p-4 rounded-xl flex items-center justify-between">
+                    <div>
+                      <h4 className="font-bold text-indigo-950 text-sm">Tailored Academic Recovery Schedule</h4>
+                      <p className="text-xs text-indigo-800">
+                        Focusing on weak foundation subjects: <strong>{studyPlan.priority_subjects.join(', ')}</strong>
+                      </p>
+                    </div>
+                    <span className="text-xs font-bold px-3 py-1 bg-white text-indigo-700 rounded-lg border border-indigo-200">
+                      Target: {studyPlan.target_hours_per_day} hrs/day
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {studyPlan.weekly_schedule.map((item, i) => (
+                      <div key={i} className="p-3.5 bg-white border border-slate-200 rounded-xl space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-slate-900 text-sm">{item.day}</span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded">
+                            {item.duration_minutes} min
+                          </span>
+                        </div>
+                        <div className="text-xs font-bold text-indigo-600">{item.focus_subject}</div>
+                        <div className="text-[10px] text-slate-400">{item.time_slot}</div>
+                        <ul className="text-xs text-slate-600 space-y-1 list-disc list-inside">
+                          {item.tasks.map((t, idx) => (
+                            <li key={idx} className="leading-snug">{t}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 5: INTERVENTIONS */}
               {activeTab === 'interventions' && (
                 <div className="space-y-6">
-                  {/* Recommended Interventions from SHAP */}
                   <div className="bg-sky-50/60 border border-sky-200 rounded-2xl p-5">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center space-x-2">
                         <Sparkles className="w-5 h-5 text-sky-600" />
-                        <h4 className="text-sm font-bold text-slate-900">Recommended Targeted Interventions</h4>
+                        <h4 className="text-sm font-bold text-slate-900">AI-Recommended Targeted Interventions</h4>
                       </div>
                       <span className="text-xs text-sky-700 font-semibold bg-sky-100 px-2.5 py-0.5 rounded-full">
-                        Derived from top risk drivers
+                        Tailored to SHAP Drivers
                       </span>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -350,7 +454,6 @@ export default function StudentDetailModal({
                     </div>
                   </div>
 
-                  {/* Active / Logged Interventions */}
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <h4 className="text-sm font-bold text-slate-900">Intervention History & Outcome Tracking</h4>

@@ -1,39 +1,49 @@
 {
-  "model_version": "test_v3",
-  "model_path": "C:\\Users\\yaksh\\OneDrive\\Doc\\PROJECTS\\Study-Pluse\\backend\\app\\ml\\..\\..\\data\\models\\model_test_v3.joblib",
-  "explainer_path": "C:\\Users\\yaksh\\OneDrive\\Doc\\PROJECTS\\Study-Pluse\\backend\\app\\ml\\..\\..\\data\\models\\explainer_test_v3.joblib",
+  "model_version": "v1.0.0",
+  "model_path": "C:\\Users\\yaksh\\OneDrive\\Doc\\PROJECTS\\Study-Pluse\\backend\\app\\ml\\..\\..\\data\\models\\model_v1.0.0.joblib",
+  "explainer_path": "C:\\Users\\yaksh\\OneDrive\\Doc\\PROJECTS\\Study-Pluse\\backend\\app\\ml\\..\\..\\data\\models\\explainer_v1.0.0.joblib",
   "metrics": {
-    "model_version": "test_v3",
-    "training_samples": 30,
-    "test_samples": 10,
+    "model_version": "v1.0.0",
+    "training_samples": 187,
+    "test_samples": 63,
     "roc_auc": 1.0,
     "recall": 1.0,
     "precision": 1.0,
-    "high_risk_recall": 1.0,
+    "high_risk_recall": 0.923,
     "precision_at_top_20": 1.0,
-    "brier_score": 0.004,
+    "brier_score": 0.062,
     "confusion_matrix": [
       [
-        6,
+        40,
         0
       ],
       [
         0,
-        4
+        23
       ]
     ],
     "calibration_curve": [
       {
         "bin": 1,
-        "predicted_probability": 0.067,
+        "predicted_probability": 0.099,
         "actual_probability": 0.0
       },
       {
         "bin": 2,
-        "predicted_probability": 0.957,
+        "predicted_probability": 0.375,
+        "actual_probability": 1.0
+      },
+      {
+        "bin": 3,
+        "predicted_probability": 0.484,
+        "actual_probability": 1.0
+      },
+      {
+        "bin": 4,
+        "predicted_probability": 0.844,
         "actual_probability": 1.0
       }
     ],
-    "trained_at": "2026-11-18T19:49:17.363469"
+    "trained_at": "2026-11-20T12:08:28.799812"
   }
 }

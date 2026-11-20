@@ -8,6 +8,8 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models import Student, RiskScore, Attendance, Marks, Behavior, Engagement, Intervention, User
 from ..auth import get_current_user
+from ..ml.indic_nlp import detect_indian_language, INDIC_LANGUAGES, ACADEMIC_TERMS_TRANSLATIONS
+from ..ml.groq_service import generate_counselor_response_with_groq, is_groq_available, get_groq_model
 
 router = APIRouter(prefix="/chat", tags=["AI Assistant"])
 
@@ -50,7 +52,12 @@ def handle_chat(
 ):
     msg = req.message.strip().lower()
     student_id = req.student_id
-    lang = req.language or "en"
+    
+    # Auto-detect language & script from message
+    detected = detect_indian_language(req.message)
+    lang = req.language if (req.language and req.language != "en") else detected["code"]
+    greeting = INDIC_LANGUAGES.get(lang, {}).get("greeting", "Hello")
+    native_lang_name = INDIC_LANGUAGES.get(lang, {}).get("native_name", "English")
 
     # 1. Check if message references a specific student by name or ID
     target_student = None
@@ -77,16 +84,46 @@ def handle_chat(
         risk = db.query(RiskScore).filter(RiskScore.student_id == target_student.student_id).order_by(RiskScore.calculated_at.desc()).first()
         att_records = db.query(Attendance).filter(Attendance.student_id == target_student.student_id).order_by(Attendance.week_number.asc()).all()
         marks_records = db.query(Marks).filter(Marks.student_id == target_student.student_id).order_by(Marks.week_number.asc()).all()
+        top_factors = risk.top_factors_json if risk else []
+        if isinstance(top_factors, str):
+            try:
+                top_factors = json.loads(top_factors)
+            except Exception:
+                top_factors = []
+
         student_ctx = {
             "name": target_student.name,
             "student_id": target_student.student_id,
             "grade": target_student.grade,
             "section": target_student.section,
             "risk_tier": risk.risk_tier if risk else "Unknown",
-            "risk_probability": risk.risk_probability if risk else 0.5
+            "risk_probability": risk.risk_probability if risk else 0.5,
+            "latest_attendance": att_records[-1].attendance_percentage if att_records else 75.0,
+            "top_factors": top_factors
         }
 
-    # 2. Match Intelligent Intent
+    # 2. Try Groq Llama Generative AI Counselor first if available
+    groq_reply = generate_counselor_response_with_groq(
+        user_message=req.message,
+        student_context=student_ctx,
+        language_code=lang,
+        language_name=native_lang_name,
+        is_code_mixed=detected.get("is_code_mixed", False)
+    )
+    if groq_reply:
+        target_name = target_student.name.split()[0] if target_student else "Aryan"
+        followups = [
+            f"What interventions are best for {target_name}?",
+            f"Simulate +15% attendance for {target_name}",
+            "Give me a 4-week foundation recovery plan"
+        ]
+        return ChatResponse(
+            reply=groq_reply,
+            student_context=student_ctx,
+            suggested_followups=followups
+        )
+
+    # 3. Match Built-in Heuristic / Rule-based Intent (Graceful Fallback)
     if target_student and any(w in msg for w in ["who", "how", "aryan", "risk", "status", "profile", "tell me about"]):
         reply = format_student_summary(target_student, risk, att_records, marks_records)
         followups = [
@@ -173,13 +210,14 @@ def handle_chat(
 
     else:
         reply = (
-            f"Hello! I am **StudyPulse AI**, your intelligent early-warning assistant.\n\n"
+            f"**{greeting}!** I am **StudyPulse AI**, your multilingual early-warning counselor.\n"
+            f"*(Active Language: {native_lang_name} • Full support for all 22 Indian Scheduled + Regional Languages & Code-mixing)*\n\n"
             f"I can help you with:\n"
             f"• 🔍 **Student Risk Analysis:** Ask *'How is Aryan doing?'* or *'Tell me about STU-1004'*\n"
             f"• 📊 **School-Wide Analytics:** Ask *'Who is at high risk?'* or *'Show attendance anomalies'*\n"
             f"• 📝 **Interventions & Study Plans:** Ask *'Give me a math study plan'* or *'Attendance tips'*\n"
             f"• 💡 **Explainable AI:** Ask *'Explain SHAP reasons'* or *'How does the model predict risk?'*\n\n"
-            f"You can also use the microphone button to talk to me via voice!"
+            f"Feel free to type or speak in Hindi, Telugu, Tamil, Bengali, Marathi, or in code-mixed Hinglish / Telugish!"
         )
         followups = [
             "Tell me about Aryan Rao",

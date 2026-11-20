@@ -16,6 +16,7 @@ from ..ml.interventions_rules import recommend_interventions
 from ..ml.simulator import simulate_what_if
 from ..ml.model_trainer import RiskModelTrainer
 from ..ml.feature_engineering import extract_student_features, FEATURE_COLUMNS
+from ..ml.timeline import calculate_predictive_timeline
 
 router = APIRouter(prefix="/students", tags=["Students"])
 
@@ -215,3 +216,42 @@ def run_student_what_if_simulation(
         adj_dict
     )
     return simulation_result
+
+@router.get("/{student_id}/timeline")
+def get_student_predictive_timeline(
+    student_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    student = db.query(Student).filter(Student.student_id == student_id).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+
+    risk = db.query(RiskScore).filter(RiskScore.student_id == student_id).order_by(RiskScore.calculated_at.desc()).first()
+    prob = risk.risk_probability if risk else 0.5
+
+    att_records = db.query(Attendance).filter(Attendance.student_id == student_id).order_by(Attendance.week_number.asc()).all()
+    marks_records = db.query(Marks).filter(Marks.student_id == student_id).order_by(Marks.week_number.asc()).all()
+
+    att_trend = 0.0
+    if len(att_records) >= 2:
+        att_trend = att_records[-1].attendance_percentage - att_records[0].attendance_percentage
+
+    marks_delta = 0.0
+    if len(marks_records) >= 2:
+        marks_delta = marks_records[-1].score - marks_records[0].score
+
+    timeline_data = calculate_predictive_timeline(
+        current_probability=prob,
+        attendance_trend=att_trend,
+        marks_delta=marks_delta,
+        weeks_ahead=4
+    )
+
+    return {
+        "student_id": student.student_id,
+        "student_name": student.name,
+        "grade": student.grade,
+        "section": student.section,
+        **timeline_data
+    }

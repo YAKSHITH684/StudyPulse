@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import Navbar from './components/Navbar';
+import Sidebar from './components/Sidebar';
+import TopHeader from './components/TopHeader';
+import HeroCommandBanner from './components/HeroCommandBanner';
 import RiskDashboard from './components/RiskDashboard';
 import StudentDetailModal from './components/StudentDetailModal';
 import InterventionModal from './components/InterventionModal';
@@ -7,8 +9,13 @@ import SchoolAnalytics from './components/SchoolAnalytics';
 import ModelEvaluation from './components/ModelEvaluation';
 import ParentPortal from './components/ParentPortal';
 import DataPipelineHub from './components/DataPipelineHub';
+import PredictiveTimeline from './components/PredictiveTimeline';
+import SchoolRiskHeatmap from './components/SchoolRiskHeatmap';
+import AIStudyPlannerAndTutor from './components/AIStudyPlannerAndTutor';
+import DocumentIntelligenceHub from './components/DocumentIntelligenceHub';
 import LoginPage from './components/LoginPage';
 import AIChatVoiceAssistant from './components/AIChatVoiceAssistant';
+import GroqConfigModal from './components/GroqConfigModal';
 import { translations } from './i18n';
 import { api, setAuthToken } from './api';
 
@@ -20,6 +27,8 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [selectedStudentId, setSelectedStudentId] = useState(null);
   const [interventionStudent, setInterventionStudent] = useState(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [groqModalOpen, setGroqModalOpen] = useState(false);
 
   const [filters, setFilters] = useState({
     search: '',
@@ -107,63 +116,132 @@ export default function App() {
     );
   }
 
+  const highRiskCount = riskList.filter(s => s.risk_tier === 'High').length;
+  const mediumRiskCount = riskList.filter(s => s.risk_tier === 'Medium').length;
+
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col text-slate-800">
-      <Navbar
+    <div className="min-h-screen bg-slate-50 flex text-slate-800">
+      {/* Executive Command Left Sidebar */}
+      <Sidebar
         user={user}
-        onLogout={handleLogout}
-        onSwitchRole={switchUserPersona}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        language={language}
-        setLanguage={setLanguage}
+        onLogout={handleLogout}
+        onSwitchRole={switchUserPersona}
+        mobileOpen={mobileMenuOpen}
+        setMobileOpen={setMobileMenuOpen}
+        highRiskCount={highRiskCount}
+        totalStudents={riskList.length}
         t={t}
       />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {user?.role === 'parent' || activeTab === 'parentPortal' ? (
-          <ParentPortal user={user} t={t} />
-        ) : (
-          <>
-            {activeTab === 'dashboard' && (
-              <RiskDashboard
-                riskList={riskList}
-                loading={loading}
-                onSelectStudent={(id) => setSelectedStudentId(id)}
-                onOpenIntervention={(stu) => setInterventionStudent(stu)}
-                filters={filters}
-                setFilters={setFilters}
-                user={user}
-                t={t}
-              />
-            )}
+      {/* Main Command Workspace */}
+      <div className="flex-1 lg:pl-72 flex flex-col min-h-screen min-w-0">
+        <TopHeader
+          user={user}
+          activeTab={activeTab}
+          language={language}
+          setLanguage={setLanguage}
+          onOpenMobileMenu={() => setMobileMenuOpen(true)}
+          onOpenGroqModal={() => setGroqModalOpen(true)}
+          t={t}
+        />
 
-            {activeTab === 'analytics' && (
-              <SchoolAnalytics 
-                onSelectStudent={(id) => setSelectedStudentId(id)} 
-                t={t} 
-              />
-            )}
+        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+          {user?.role === 'parent' || activeTab === 'parentPortal' ? (
+            <ParentPortal user={user} t={t} />
+          ) : (
+            <>
+              {activeTab === 'dashboard' && (
+                <>
+                  <HeroCommandBanner
+                    user={user}
+                    highRiskCount={highRiskCount}
+                    mediumRiskCount={mediumRiskCount}
+                    totalStudents={riskList.length}
+                    onNavigateTab={(tab) => setActiveTab(tab)}
+                    t={t}
+                  />
+                  <RiskDashboard
+                    riskList={riskList}
+                    loading={loading}
+                    onSelectStudent={(id) => setSelectedStudentId(id)}
+                    onOpenIntervention={(stu) => setInterventionStudent(stu)}
+                    filters={filters}
+                    setFilters={setFilters}
+                    user={user}
+                    t={t}
+                  />
+                </>
+              )}
 
-            {activeTab === 'metrics' && (
-              <ModelEvaluation t={t} />
-            )}
+              {activeTab === 'timeline' && (
+                <PredictiveTimeline
+                  riskList={riskList}
+                  onSelectStudent={(id) => setSelectedStudentId(id)}
+                  t={t}
+                />
+              )}
 
-            {activeTab === 'dataHub' && (
-              <DataPipelineHub 
-                onPipelineSuccess={() => loadRiskData(filters)} 
-                t={t} 
-              />
-            )}
-          </>
-        )}
-      </main>
+              {activeTab === 'heatmap' && (
+                <SchoolRiskHeatmap
+                  riskList={riskList}
+                  onSelectStudent={(id) => setSelectedStudentId(id)}
+                  t={t}
+                />
+              )}
 
-      {/* Footer */}
-      <footer className="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500">
-        <p className="font-semibold text-slate-700">StudyPulse • AI Early-Warning System for Student Dropout</p>
-        <p className="mt-0.5 text-slate-400">PRASUNEX INNOVATHON 2026 – Round 3 • Team Lead: Anandapu Yakshith</p>
-      </footer>
+              {activeTab === 'tutor' && (
+                <AIStudyPlannerAndTutor
+                  riskList={riskList}
+                  language={language}
+                  t={t}
+                />
+              )}
+
+              {activeTab === 'docIntel' && (
+                <DocumentIntelligenceHub
+                  t={t}
+                  language={language}
+                />
+              )}
+
+              {activeTab === 'analytics' && (
+                <SchoolAnalytics 
+                  onSelectStudent={(id) => setSelectedStudentId(id)} 
+                  t={t} 
+                />
+              )}
+
+              {activeTab === 'metrics' && (
+                <ModelEvaluation t={t} />
+              )}
+
+              {activeTab === 'dataHub' && (
+                <DataPipelineHub 
+                  onPipelineSuccess={() => loadRiskData(filters)} 
+                  t={t} 
+                />
+              )}
+            </>
+          )}
+        </main>
+
+        {/* Footer */}
+        <footer className="bg-white/80 backdrop-blur-md border-t border-slate-200/80 py-5 text-center text-xs text-slate-500 mt-auto">
+          <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+            <div className="flex items-center space-x-2">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span className="font-semibold text-slate-700">StudyPulse Early-Warning Platform</span>
+              <span className="text-slate-300">•</span>
+              <span className="text-slate-500">XGBoost & SHAP Inference Engine v1.0</span>
+            </div>
+            <p className="text-slate-400">
+              Detect Early • Explain Clearly • Act in Time
+            </p>
+          </div>
+        </footer>
+      </div>
 
       {/* Student Detail Modal */}
       {selectedStudentId && (
@@ -194,6 +272,12 @@ export default function App() {
       <AIChatVoiceAssistant 
         currentStudentId={selectedStudentId} 
         language={language} 
+      />
+
+      {/* Groq Llama 3.3 AI Configuration Modal */}
+      <GroqConfigModal
+        isOpen={groqModalOpen}
+        onClose={() => setGroqModalOpen(false)}
       />
     </div>
   );

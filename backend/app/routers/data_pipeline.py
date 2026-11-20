@@ -2,6 +2,7 @@ import os
 import json
 import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models import Student, Attendance, Marks, Behavior, Engagement, RiskScore, AuditLog, User
@@ -10,6 +11,8 @@ from ..ml.data_generator import generate_synthetic_school_data
 from ..ml.feature_engineering import extract_student_features, FEATURE_COLUMNS
 from ..ml.model_trainer import RiskModelTrainer
 from ..ml.explainer import ShapExplainerService
+
+SAMPLE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "sample_datasets"))
 
 router = APIRouter(tags=["Data & Pipeline"])
 
@@ -360,6 +363,41 @@ async def upload_csv_data(
             db.add(mk)
             rows_inserted += 1
 
+    elif dataset_type == "behavior":
+        required_cols = {"student_id", "week_number", "incident_count"}
+        if not required_cols.issubset(df.columns):
+            raise HTTPException(status_code=400, detail=f"Missing required columns: {required_cols - set(df.columns)}")
+        for _, r in df.iterrows():
+            beh = Behavior(
+                student_id=str(r["student_id"]),
+                week_number=int(r["week_number"]),
+                week_date=str(r.get("week_date", "2026-01-01")),
+                incident_count=int(r.get("incident_count", 0)),
+                severity_score=int(r.get("severity_score", 0)),
+                late_arrivals=int(r.get("late_arrivals", 0)),
+                notes=str(r.get("notes", ""))
+            )
+            db.add(beh)
+            rows_inserted += 1
+
+    elif dataset_type == "engagement":
+        required_cols = {"student_id", "week_number", "portal_logins"}
+        if not required_cols.issubset(df.columns):
+            raise HTTPException(status_code=400, detail=f"Missing required columns: {required_cols - set(df.columns)}")
+        for _, r in df.iterrows():
+            eng = Engagement(
+                student_id=str(r["student_id"]),
+                week_number=int(r["week_number"]),
+                week_date=str(r.get("week_date", "2026-01-01")),
+                portal_logins=int(r.get("portal_logins", 0)),
+                assignments_assigned=int(r.get("assignments_assigned", 4)),
+                assignments_completed=int(r.get("assignments_completed", 4)),
+                late_submissions=int(r.get("late_submissions", 0)),
+                engagement_score=float(r.get("engagement_score", 75.0))
+            )
+            db.add(eng)
+            rows_inserted += 1
+
     else:
         raise HTTPException(status_code=400, detail=f"Unknown dataset_type: {dataset_type}")
 
@@ -375,3 +413,137 @@ async def upload_csv_data(
     db.commit()
 
     return {"status": "success", "rows_inserted": rows_inserted, "dataset_type": dataset_type}
+
+@router.get("/data/sample/{dataset_type}")
+def download_sample_csv(dataset_type: str):
+    """
+    Downloads realistic sample CSV datasets for demonstration & testing.
+    Valid dataset_type values: students, attendance, marks, behavior, engagement.
+    """
+    file_map = {
+        "students": "1_students_master.csv",
+        "attendance": "2_weekly_attendance.csv",
+        "marks": "3_academic_marks.csv",
+        "behavior": "4_behavior_and_incidents.csv",
+        "engagement": "5_digital_engagement.csv",
+    }
+    filename = file_map.get(dataset_type.lower())
+    if not filename:
+        raise HTTPException(status_code=404, detail=f"Sample dataset '{dataset_type}' not found. Available: {list(file_map.keys())}")
+
+    file_path = os.path.join(SAMPLE_DIR, filename)
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Sample dataset file not generated yet.")
+
+    return FileResponse(
+        path=file_path,
+        media_type="text/csv",
+        filename=filename
+    )
+
+@router.post("/data/quick-load-sample")
+def quick_load_sample_csv(
+    dataset_type: str = Form(..., description="students, attendance, marks, behavior, engagement, or all"),
+    current_user: User = Depends(require_roles(["admin"])),
+    db: Session = Depends(get_db)
+):
+    """
+    Directly ingests a pre-generated sample CSV dataset into the database for rapid testing.
+    """
+    file_map = {
+        "students": ("1_students_master.csv", "students"),
+        "attendance": ("2_weekly_attendance.csv", "attendance"),
+        "marks": ("3_academic_marks.csv", "marks"),
+        "behavior": ("4_behavior_and_incidents.csv", "behavior"),
+        "engagement": ("5_digital_engagement.csv", "engagement"),
+    }
+
+    types_to_load = list(file_map.keys()) if dataset_type.lower() == "all" else [dataset_type.lower()]
+    total_loaded = 0
+
+    for t in types_to_load:
+        if t not in file_map:
+            continue
+        fname, dtype = file_map[t]
+        fpath = os.path.join(SAMPLE_DIR, fname)
+        if not os.path.exists(fpath):
+            continue
+
+        df = pd.read_csv(fpath)
+        if dtype == "students":
+            for _, r in df.iterrows():
+                stu = Student(
+                    student_id=str(r["student_id"]),
+                    name=str(r["name"]),
+                    grade=int(r["grade"]),
+                    section=str(r["section"]),
+                    gender=str(r.get("gender", "Unspecified")),
+                    parent_name=str(r.get("parent_name", "")),
+                    parent_phone=str(r.get("parent_phone", "")),
+                    parent_email=str(r.get("parent_email", ""))
+                )
+                db.merge(stu)
+                total_loaded += 1
+
+        elif dtype == "attendance":
+            for _, r in df.iterrows():
+                total = int(r.get("days_total", 5))
+                pres = int(r["days_present"])
+                att = Attendance(
+                    student_id=str(r["student_id"]),
+                    week_number=int(r["week_number"]),
+                    week_date=str(r["week_date"]),
+                    days_total=total,
+                    days_present=pres,
+                    days_absent=int(r.get("days_absent", total - pres)),
+                    days_late=int(r.get("days_late", 0)),
+                    attendance_percentage=float(r.get("attendance_percentage", (pres / max(1, total)) * 100.0))
+                )
+                db.add(att)
+                total_loaded += 1
+
+        elif dtype == "marks":
+            for _, r in df.iterrows():
+                mk = Marks(
+                    student_id=str(r["student_id"]),
+                    week_number=int(r["week_number"]),
+                    week_date=str(r.get("week_date", "2026-01-01")),
+                    subject=str(r["subject"]),
+                    score=float(r["score"]),
+                    max_score=float(r.get("max_score", 100.0)),
+                    class_average=float(r.get("class_average", 70.0))
+                )
+                db.add(mk)
+                total_loaded += 1
+
+        elif dtype == "behavior":
+            for _, r in df.iterrows():
+                beh = Behavior(
+                    student_id=str(r["student_id"]),
+                    week_number=int(r["week_number"]),
+                    week_date=str(r.get("week_date", "2026-01-01")),
+                    incident_count=int(r.get("incident_count", 0)),
+                    severity_score=int(r.get("severity_score", 0)),
+                    late_arrivals=int(r.get("late_arrivals", 0)),
+                    notes=str(r.get("notes", ""))
+                )
+                db.add(beh)
+                total_loaded += 1
+
+        elif dtype == "engagement":
+            for _, r in df.iterrows():
+                eng = Engagement(
+                    student_id=str(r["student_id"]),
+                    week_number=int(r["week_number"]),
+                    week_date=str(r.get("week_date", "2026-01-01")),
+                    portal_logins=int(r.get("portal_logins", 0)),
+                    assignments_assigned=int(r.get("assignments_assigned", 4)),
+                    assignments_completed=int(r.get("assignments_completed", 4)),
+                    late_submissions=int(r.get("late_submissions", 0)),
+                    engagement_score=float(r.get("engagement_score", 75.0))
+                )
+                db.add(eng)
+                total_loaded += 1
+
+    db.commit()
+    return {"status": "success", "message": f"Quick-loaded {total_loaded} rows from sample dataset '{dataset_type}'"}
