@@ -2,11 +2,15 @@
 # StudyPulse Production Dockerfile (Render, Railway, Fly.io, or Local Docker)
 # ==============================================================================
 
-# Stage 1: Build React Vite Frontend
-FROM node:20-alpine AS frontend-builder
+# Stage 1: Build React Vite Frontend (Debian glibc runtime with expanded stack)
+FROM node:20-slim AS frontend-builder
 WORKDIR /app/frontend
+
+# Expand V8 call stack and memory to prevent deep AST parser recursion in Rollup
+ENV NODE_OPTIONS="--max-old-space-size=4096 --stack-size=65536"
+
 COPY frontend/package*.json ./
-RUN npm install
+RUN npm ci || npm install
 COPY frontend/ ./
 RUN npm run build
 

@@ -1,12 +1,16 @@
 # ==============================================================================
 # StudyPulse Frontend Static SPA Dockerfile (Nginx Production Server)
 # ==============================================================================
-# Stage 1: Build React Vite Frontend
-FROM node:20-alpine AS builder
+# Stage 1: Build React Vite Frontend (Debian glibc runtime with expanded stack)
+FROM node:20-slim AS builder
 
 WORKDIR /app
+
+# Expand V8 call stack and memory to prevent deep AST parser recursion in Rollup
+ENV NODE_OPTIONS="--max-old-space-size=4096 --stack-size=65536"
+
 COPY package*.json ./
-RUN npm install
+RUN npm ci || npm install
 COPY . ./
 
 ARG VITE_API_URL
