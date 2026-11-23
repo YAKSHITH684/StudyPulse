@@ -1,5 +1,45 @@
-const API_BASE = import.meta.env.VITE_API_BASE || 
-  (typeof window !== 'undefined' && (window.location.port === '5173' || window.location.port === '3000') ? 'http://localhost:8000' : '');
+export const getApiBase = () => {
+  if (typeof window !== 'undefined') {
+    const custom = localStorage.getItem('studypulse_api_base');
+    if (custom) return custom.replace(/\/$/, '');
+  }
+
+  let envBase = import.meta.env.VITE_API_BASE || import.meta.env.VITE_API_URL;
+  if (envBase) {
+    envBase = envBase.trim().replace(/\/$/, '');
+    if (!envBase.startsWith('http://') && !envBase.startsWith('https://')) {
+      envBase = 'https://' + envBase;
+    }
+    return envBase;
+  }
+
+  if (typeof window !== 'undefined') {
+    if (window.location.port === '5173' || window.location.port === '3000') {
+      return 'http://localhost:8000';
+    }
+    if (window.location.hostname.includes('onrender.com') && window.location.hostname.includes('frontend')) {
+      const backendHost = window.location.hostname.replace('frontend', 'backend');
+      return 'https://' + backendHost;
+    }
+  }
+
+  return '';
+};
+
+export const setApiBase = (url) => {
+  if (typeof window !== 'undefined') {
+    if (url) {
+      let clean = url.trim().replace(/\/$/, '');
+      if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
+        clean = 'https://' + clean;
+      }
+      localStorage.setItem('studypulse_api_base', clean);
+    } else {
+      localStorage.removeItem('studypulse_api_base');
+    }
+  }
+};
+
 
 let authToken = localStorage.getItem("studypulse_token") || "";
 

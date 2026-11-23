@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Activity, Shield, Lock, Mail, Eye, EyeOff, Sparkles, 
   ArrowRight, Users, GraduationCap, Heart, CheckCircle2, 
   UserPlus, KeyRound, ArrowLeft, RefreshCw, AlertCircle,
-  Zap, BrainCircuit, ShieldCheck, Globe2, BarChart3, Clock
+  Zap, BrainCircuit, ShieldCheck, Globe2, BarChart3, Clock,
+  Server, ExternalLink
 } from 'lucide-react';
-import { api } from '../api';
+import { api, getApiBase, setApiBase } from '../api';
 
 export default function LoginPage({ onLoginSuccess, t }) {
   // Modes: 'signin', 'register', 'forgot'
@@ -37,10 +38,54 @@ export default function LoginPage({ onLoginSuccess, t }) {
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
 
+  // Backend API URL configuration (for decoupled deployments)
+  const [apiConfigOpen, setApiConfigOpen] = useState(false);
+  const [currentApiBase, setCurrentApiBase] = useState(getApiBase() || '');
+  const [customApiUrl, setCustomApiUrl] = useState(getApiBase() || '');
+  const [apiPingStatus, setApiPingStatus] = useState('checking'); // 'checking' | 'connected' | 'error'
+  const [apiPingMsg, setApiPingMsg] = useState('');
+
+  const pingBackend = async (urlToCheck) => {
+    setApiPingStatus('checking');
+    try {
+      const target = (urlToCheck || '').replace(/\/$/, "");
+      const res = await fetch(`${target}/health`, { method: 'GET' });
+      if (res.ok) {
+        setApiPingStatus('connected');
+        setApiPingMsg('Connected to backend successfully! (Status 200 OK)');
+      } else {
+        setApiPingStatus('error');
+        setApiPingMsg(`Backend responded with status ${res.status}`);
+      }
+    } catch (err) {
+      setApiPingStatus('error');
+      setApiPingMsg('Cannot reach backend. Check URL or wait if Render free tier is waking up.');
+    }
+  };
+
+  useEffect(() => {
+    pingBackend(currentApiBase);
+  }, [currentApiBase]);
+
+  const handleSaveApiUrl = () => {
+    setApiBase(customApiUrl);
+    const updated = getApiBase() || '';
+    setCurrentApiBase(updated);
+    pingBackend(updated);
+  };
+
   const switchMode = (mode) => {
     setAuthMode(mode);
     setError(null);
     setSuccessMsg(null);
+  };
+
+  const formatErrorMessage = (err) => {
+    const raw = err?.message || String(err || "");
+    if (raw.includes("Failed to fetch") || raw.includes("NetworkError")) {
+      return `Cannot reach backend API at "${currentApiBase || window.location.origin}". If running on Render Free tier, it may be waking up from sleep (~30s). You can verify or change the API URL at the bottom.`;
+    }
+    return raw || "Invalid email or password";
   };
 
   // 1. Handle Login
@@ -56,7 +101,7 @@ export default function LoginPage({ onLoginSuccess, t }) {
       const data = await api.login(email, password);
       onLoginSuccess(data);
     } catch (err) {
-      setError(err.message || "Invalid email or password");
+      setError(formatErrorMessage(err));
       setLoading(false);
     }
   };
@@ -71,7 +116,7 @@ export default function LoginPage({ onLoginSuccess, t }) {
       const data = await api.login(personaEmail, personaPassword);
       onLoginSuccess(data);
     } catch (err) {
-      setError(err.message || "Quick login failed");
+      setError(formatErrorMessage(err));
       setLoading(false);
     }
   };
@@ -696,10 +741,75 @@ export default function LoginPage({ onLoginSuccess, t }) {
           )}
         </div>
 
-        {/* Bottom Form Footer */}
-        <div className="w-full max-w-lg mx-auto pt-6 border-t border-slate-200/80 text-[11px] text-slate-400 flex items-center justify-between">
-          <span>StudyPulse Early Warning System v1.0</span>
-          <span className="text-slate-500 font-medium">⚡ Groq LLM Inference Active</span>
+        {/* Bottom Form Footer & API Connection Config */}
+        <div className="w-full max-w-lg mx-auto pt-6 border-t border-slate-200/80 space-y-3">
+          
+          <div className="flex items-center justify-between text-[11px] text-slate-500 bg-slate-50/80 px-3 py-2 rounded-xl border border-slate-200/70">
+            <div className="flex items-center space-x-2 truncate max-w-[280px] sm:max-w-[340px]">
+              <span className={`w-2 h-2 rounded-full shrink-0 ${
+                apiPingStatus === 'connected' ? 'bg-emerald-500 shadow-xs' : 
+                apiPingStatus === 'error' ? 'bg-rose-500' : 
+                'bg-amber-400 animate-pulse'
+              }`} />
+              <span className="font-semibold text-slate-600">Backend API:</span>
+              <span className="font-mono text-slate-700 truncate" title={currentApiBase || 'Direct/Localhost'}>
+                {currentApiBase || (typeof window !== 'undefined' ? `${window.location.origin} (Relative)` : 'http://localhost:8000')}
+              </span>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setApiConfigOpen(!apiConfigOpen)}
+              className="text-sky-600 hover:text-sky-800 font-bold ml-2 underline text-[11px] shrink-0 cursor-pointer"
+            >
+              {apiConfigOpen ? "Hide" : "Change"}
+            </button>
+          </div>
+
+          {apiConfigOpen && (
+            <div className="p-3.5 bg-sky-50/70 border border-sky-200/80 rounded-2xl space-y-2.5 text-xs animate-in fade-in duration-200">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-slate-800 flex items-center space-x-1.5">
+                  <Server className="w-3.5 h-3.5 text-sky-600" />
+                  <span>Connect Custom Backend Endpoint</span>
+                </span>
+                <span className="text-[10px] text-slate-400">Decoupled Architecture</span>
+              </div>
+              <p className="text-[11px] text-slate-600 leading-relaxed">
+                If the backend is hosted separately on Render, enter its public URL below:
+              </p>
+              <div className="flex space-x-2">
+                <input
+                  type="text"
+                  value={customApiUrl}
+                  onChange={(e) => setCustomApiUrl(e.target.value)}
+                  placeholder="https://studypulse-backend.onrender.com"
+                  className="flex-1 px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500/20"
+                />
+                <button
+                  type="button"
+                  onClick={handleSaveApiUrl}
+                  className="px-3.5 py-1.5 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl transition-all cursor-pointer shadow-2xs text-xs shrink-0"
+                >
+                  Save & Ping
+                </button>
+              </div>
+
+              {apiPingMsg && (
+                <div className={`text-[11px] font-bold flex items-center space-x-1 ${
+                  apiPingStatus === 'connected' ? 'text-emerald-700' : 'text-rose-600'
+                }`}>
+                  <span>{apiPingStatus === 'connected' ? '✓' : '⚠️'}</span>
+                  <span>{apiPingMsg}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="text-[11px] text-slate-400 flex items-center justify-between pt-1">
+            <span>StudyPulse Early Warning System v1.0</span>
+            <span className="text-slate-500 font-medium">⚡ Groq LLM Inference Active</span>
+          </div>
         </div>
       </div>
 

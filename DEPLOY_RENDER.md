@@ -1,100 +1,116 @@
-# 🚀 Deploying StudyPulse to Render Cloud
+# 🚀 Deploying StudyPulse on Render (Decoupled Architecture)
 
-StudyPulse is configured for deployment on **Render** (as a unified single-service free-tier Web App or Docker container).
-
-Both the **FastAPI Backend** and the **React Vite Frontend** run together in a single Web Service, avoiding CORS issues and staying 100% within Render's free tier.
+StudyPulse is configured for a **decoupled, multi-service deployment** on Render:
+1. **Backend Web Service (`studypulse-backend`)**: Python 3.12 FastAPI microservice handling XGBoost risk inference, SHAP root cause attribution, SQLite database, and Groq LLM inference.
+2. **Frontend Static Site (`studypulse-frontend`)**: React 18 + Vite SPA deployed on Render's global high-speed CDN, communicating with the backend via HTTPS.
 
 ---
 
-## ⚡ Method 1: Automatic Blueprint Deployment (Fastest)
+## ⚡ Method 1: Automatic Blueprint (1-Click Deployment)
 
-Render includes native support for the included [`render.yaml`](render.yaml) blueprint:
+The repository includes a ready-to-use [`render.yaml`](render.yaml) blueprint that spins up both services simultaneously and links them automatically:
 
 1. **Push your code to GitHub**:
    ```bash
    git add .
-   git commit -m "Configure Render cloud deployment"
+   git commit -m "Decouple frontend and backend deployments"
    git push origin master
    ```
-2. Open your [Render Dashboard](https://dashboard.render.com).
-3. Click **"New +"** in the top-right corner and select **"Blueprint"**.
-4. Connect your GitHub repository (`Study-Pluse`).
-5. Render will automatically detect `render.yaml` and configure:
-   - **Service Name:** `studypulse`
-   - **Runtime:** Python 3.12 + Node.js 20
-   - **Build Command:** `./render-build.sh`
-   - **Start Command:** `python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-   - **Health Check:** `/health`
-6. Click **"Apply"**.
-7. In the **Environment Variables** tab of your new service, add your Groq key:
-   - `GROQ_API_KEY`: `gsk_...`
-   - `GROQ_MODEL`: `qwen/qwen3.8-27b`
-8. Render will build and deploy your app at:  
-   `https://studypulse-xxxx.onrender.com`
+2. Navigate to your [Render Dashboard](https://dashboard.render.com).
+3. Click **"New +"** in the top navigation bar and select **"Blueprint"**.
+4. Connect your GitHub repository: **`YAKSHITH684/StudyPulse`**.
+5. Render detects `render.yaml` and lists the two services:
+   - 🖥️ **`studypulse-backend`** (Python Web Service)
+   - 🌐 **`studypulse-frontend`** (Static Site with SPA rewrite rules)
+6. Under **Environment Variables**, provide your Groq API key:
+   - `GROQ_API_KEY`: *(paste your `gsk_...` key)*
+7. Click **"Apply"**.
+
+Render will deploy both services:
+- **Backend URL:** `https://studypulse-backend.onrender.com`
+- **Frontend URL:** `https://studypulse-frontend.onrender.com`
+
+*(The blueprint automatically wires `VITE_API_URL` on the frontend to the backend's host!)*
 
 ---
 
-## 🛠️ Method 2: Manual Web Service Setup on Render
+## 🛠️ Method 2: Manual Setup (Deploying Step-by-Step in Render UI)
 
-If you prefer setting up manually without Blueprints:
+If you prefer creating the two services manually in the Render dashboard:
 
-1. In the [Render Dashboard](https://dashboard.render.com), click **"New +"** → **"Web Service"**.
-2. Connect your GitHub repository.
-3. Configure the following fields:
-   - **Name:** `studypulse`
-   - **Region:** Any (e.g. *Oregon* or *Frankfurt*)
-   - **Branch:** `master` (or `main`)
+### Step 1: Deploy Backend Web Service
+1. In the Render Dashboard, click **"New +"** → **"Web Service"**.
+2. Select your repository `YAKSHITH684/StudyPulse`.
+3. Configure the fields:
+   - **Name:** `studypulse-backend`
+   - **Region:** Any (e.g. *Oregon*)
+   - **Branch:** `main` (or `master`)
    - **Root Directory:** *(leave blank)*
    - **Runtime:** `Python 3`
    - **Build Command:**
      ```bash
-     ./render-build.sh
+     pip install --upgrade pip && pip install -r backend/requirements.txt && export PYTHONPATH=backend && python backend/seed_data.py
      ```
    - **Start Command:**
      ```bash
      python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
      ```
-   - **Plan:** `Free`
-
-4. Expand the **Environment Variables** section and add:
-   | Key | Value | Notes |
-   | :--- | :--- | :--- |
-   | `PYTHONPATH` | `backend` | Required for imports |
-   | `PYTHON_VERSION` | `3.12.3` | Python runtime |
-   | `NODE_VERSION` | `20.12.0` | Required for Vite frontend build |
-   | `GROQ_API_KEY` | `gsk_your_groq_api_key` | Your Groq LLM key |
-   | `GROQ_MODEL` | `qwen/qwen3.8-27b` | Active generative model |
-
+   - **Instance Type:** `Free`
+4. In **Environment Variables**, add:
+   | Key | Value |
+   | :--- | :--- |
+   | `PYTHONPATH` | `backend` |
+   | `PYTHON_VERSION` | `3.12.3` |
+   | `GROQ_API_KEY` | *(Your Groq API key)* |
+   | `GROQ_MODEL` | `qwen/qwen3.8-27b` |
 5. Click **"Create Web Service"**.
+6. Note your backend URL (e.g. `https://studypulse-backend-xxxx.onrender.com`).
 
 ---
 
-## 🐳 Method 3: Docker Deployment on Render (100% Hermetic)
-
-If you prefer containerized builds, StudyPulse includes a multi-stage production [`Dockerfile`](Dockerfile):
-
-1. Click **"New +"** → **"Web Service"** on Render.
-2. Select your repository.
-3. Under **Runtime**, select **"Docker"**.
-4. Render will automatically read `Dockerfile`, compile the React frontend in Stage 1, bundle it with Python 3.12 and XGBoost in Stage 2, and start the service on port 10000.
-5. Add `GROQ_API_KEY` in the Environment Variables tab.
-6. Click **"Create Web Service"**.
+### Step 2: Deploy Frontend Static Site
+1. In the Render Dashboard, click **"New +"** → **"Static Site"**.
+2. Select your repository `YAKSHITH684/StudyPulse`.
+3. Configure the fields:
+   - **Name:** `studypulse-frontend`
+   - **Branch:** `main` (or `master`)
+   - **Root Directory:** `frontend`
+   - **Build Command:**
+     ```bash
+     npm install && npm run build
+     ```
+   - **Publish Directory:** `dist`
+4. Expand **Environment Variables** and add:
+   | Key | Value |
+   | :--- | :--- |
+   | `VITE_API_URL` | `https://studypulse-backend-xxxx.onrender.com` |
+5. In **Redirects / Rewrites**, add the SPA rewrite rule:
+   - **Type:** `Rewrite`
+   - **Source:** `/*`
+   - **Destination:** `/index.html`
+6. Click **"Create Static Site"**.
 
 ---
 
-## 🔑 Default Demonstration Logins on Your Deployed App
+## 🔄 Dynamic In-App API Switcher
 
-Once deployed, the app will be live on your `.onrender.com` URL with the new executive login page and instant 1-click persona switchers:
-
-| Role | Email | Password | Scope |
-| :--- | :--- | :--- | :--- |
-| 👑 **Administrator** | `admin@studypulse.edu` | `Admin@123` | School-wide access, pipeline re-runs, and audit trails |
-| 👩‍🏫 **Class Teacher** | `teacher@studypulse.edu` | `Teacher@123` | Section-restricted to Grade 10 (Sections A & B) |
-| 👨‍👩‍👧 **Parent** | `parent@studypulse.edu` | `Parent@123` | Restricted solely to linked child **Aryan Rao** (`STU-1004`) |
+Even if you deploy the frontend before the backend or change domains later, StudyPulse includes an **in-browser API Endpoint Switcher** on the login screen:
+1. Open your frontend URL.
+2. At the bottom of the login card, view the active **Backend API** indicator.
+3. Click **"Change"** to enter your custom backend URL (e.g. `https://your-custom-backend.onrender.com`).
+4. Click **"Save & Ping"** — it immediately tests the `/health` endpoint and saves to your browser!
 
 ---
 
-## 💡 Troubleshooting on Render
+## 🔑 Default Credentials for Login
 
-- **Free Tier Cold Starts:** Render free tier services spin down after 15 minutes of inactivity. When accessed again, the first request may take 30-50 seconds to wake up the service.
-- **Viewing Live Logs:** Use the **"Logs"** tab in the Render dashboard to view real-time uvicorn request logs and model predictions.
+| Role | Email | Password |
+| :--- | :--- | :--- |
+| 👑 **Administrator** | `admin@studypulse.edu` | `Admin@123` |
+| 👩‍🏫 **Class Teacher** | `teacher@studypulse.edu` | `Teacher@123` |
+| 👨‍👩‍👧 **Parent** | `parent@studypulse.edu` | `Parent@123` |
+
+---
+
+## 💡 Notes on Render Free Tier
+- **Cold Starts:** When inactive for 15 minutes, Render free-tier web services sleep. The first request may take 30–50 seconds to wake up. The frontend login screen displays a live wake-up notice automatically.

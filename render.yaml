@@ -1,9 +1,13 @@
 services:
+  # ============================================================================
+  # 1. FastAPI Machine Learning Backend Web Service
+  # ============================================================================
   - type: web
-    name: studypulse
+    name: studypulse-backend
     runtime: python
     plan: free
-    buildCommand: "bash ./render-build.sh"
+    region: oregon
+    buildCommand: "pip install --upgrade pip && pip install -r backend/requirements.txt && export PYTHONPATH=backend && python backend/seed_data.py"
     startCommand: "python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT"
     healthCheckPath: /health
     envVars:
@@ -11,11 +15,31 @@ services:
         value: backend
       - key: PYTHON_VERSION
         value: 3.12.3
-      - key: NODE_VERSION
-        value: 20.12.0
       - key: GROQ_MODEL
         value: qwen/qwen3.8-27b
       - key: GROQ_API_KEY
         sync: false
       - key: SECRET_KEY
         generateValue: true
+
+  # ============================================================================
+  # 2. React Vite Frontend Static Site (Decoupled on Global CDN)
+  # ============================================================================
+  - type: web
+    name: studypulse-frontend
+    runtime: static
+    plan: free
+    region: oregon
+    rootDir: frontend
+    buildCommand: "npm install && npm run build"
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: studypulse-backend
+          property: host
