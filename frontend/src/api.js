@@ -40,6 +40,8 @@ export const setApiBase = (url) => {
   }
 };
 
+export const API_BASE = getApiBase();
+
 
 let authToken = localStorage.getItem("studypulse_token") || "";
 
@@ -65,7 +67,7 @@ const authHeaders = () => {
 export const api = {
   // Auth
   login: async (email, password) => {
-    const res = await fetch(`${API_BASE}/auth/login`, {
+    const res = await fetch(`${getApiBase()}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
@@ -80,7 +82,7 @@ export const api = {
   },
 
   register: async (userData) => {
-    const res = await fetch(`${API_BASE}/auth/register`, {
+    const res = await fetch(`${getApiBase()}/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(userData),
@@ -95,7 +97,7 @@ export const api = {
   },
 
   forgotPassword: async (email) => {
-    const res = await fetch(`${API_BASE}/auth/forgot-password`, {
+    const res = await fetch(`${getApiBase()}/auth/forgot-password`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email }),
@@ -108,7 +110,7 @@ export const api = {
   },
 
   resetPassword: async (email, resetToken, newPassword) => {
-    const res = await fetch(`${API_BASE}/auth/reset-password`, {
+    const res = await fetch(`${getApiBase()}/auth/reset-password`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, reset_token: resetToken, new_password: newPassword }),
@@ -121,7 +123,7 @@ export const api = {
   },
 
   getCurrentUser: async () => {
-    const res = await fetch(`${API_BASE}/auth/me`, {
+    const res = await fetch(`${getApiBase()}/auth/me`, {
       headers: authHeaders(),
     });
     if (!res.ok) throw new Error("Failed to get profile");
@@ -136,7 +138,7 @@ export const api = {
     if (filters.section) params.append("section", filters.section);
     if (filters.search) params.append("search", filters.search);
 
-    const res = await fetch(`${API_BASE}/risk?${params.toString()}`, {
+    const res = await fetch(`${getApiBase()}/risk?${params.toString()}`, {
       headers: authHeaders(),
     });
     if (!res.ok) throw new Error("Failed to load risk list");
@@ -145,7 +147,7 @@ export const api = {
 
   // Student details
   getStudentDetail: async (studentId) => {
-    const res = await fetch(`${API_BASE}/students/${studentId}`, {
+    const res = await fetch(`${getApiBase()}/students/${studentId}`, {
       headers: authHeaders(),
     });
     if (!res.ok) throw new Error("Failed to load student");
@@ -153,7 +155,7 @@ export const api = {
   },
 
   getSuggestions: async (studentId) => {
-    const res = await fetch(`${API_BASE}/students/${studentId}/suggestions`, {
+    const res = await fetch(`${getApiBase()}/students/${studentId}/suggestions`, {
       headers: authHeaders(),
     });
     if (!res.ok) throw new Error("Failed to load suggestions");
@@ -161,7 +163,7 @@ export const api = {
   },
 
   runWhatIf: async (studentId, adjustments) => {
-    const res = await fetch(`${API_BASE}/students/${studentId}/what-if`, {
+    const res = await fetch(`${getApiBase()}/students/${studentId}/what-if`, {
       method: "POST",
       headers: authHeaders(),
       body: JSON.stringify(adjustments),
@@ -172,7 +174,7 @@ export const api = {
 
   // Interventions
   createIntervention: async (data) => {
-    const res = await fetch(`${API_BASE}/interventions`, {
+    const res = await fetch(`${getApiBase()}/interventions`, {
       method: "POST",
       headers: authHeaders(),
       body: JSON.stringify(data),
@@ -182,7 +184,7 @@ export const api = {
   },
 
   updateIntervention: async (id, data) => {
-    const res = await fetch(`${API_BASE}/interventions/${id}`, {
+    const res = await fetch(`${getApiBase()}/interventions/${id}`, {
       method: "PATCH",
       headers: authHeaders(),
       body: JSON.stringify(data),
@@ -192,7 +194,7 @@ export const api = {
   },
 
   listInterventions: async (studentId = null) => {
-    const url = studentId ? `${API_BASE}/interventions?student_id=${studentId}` : `${API_BASE}/interventions`;
+    const url = studentId ? `${getApiBase()}/interventions?student_id=${studentId}` : `${getApiBase()}/interventions`;
     const res = await fetch(url, { headers: authHeaders() });
     if (!res.ok) throw new Error("Failed to load interventions");
     return res.json();
@@ -200,7 +202,7 @@ export const api = {
 
   // School Analytics & Anomalies
   getSchoolAnalytics: async () => {
-    const res = await fetch(`${API_BASE}/analytics/school`, {
+    const res = await fetch(`${getApiBase()}/analytics/school`, {
       headers: authHeaders(),
     });
     if (!res.ok) throw new Error("Failed to load analytics");
@@ -208,7 +210,7 @@ export const api = {
   },
 
   getAnomalies: async () => {
-    const res = await fetch(`${API_BASE}/analytics/anomalies`, {
+    const res = await fetch(`${getApiBase()}/analytics/anomalies`, {
       headers: authHeaders(),
     });
     if (!res.ok) throw new Error("Failed to load anomalies");
@@ -217,7 +219,7 @@ export const api = {
 
   // Model Metrics
   getModelMetrics: async () => {
-    const res = await fetch(`${API_BASE}/metrics`, {
+    const res = await fetch(`${getApiBase()}/metrics`, {
       headers: authHeaders(),
     });
     if (!res.ok) throw new Error("Failed to load metrics");
@@ -226,7 +228,7 @@ export const api = {
 
   // Data Pipeline
   generateSynthetic: async (numStudents = 250, numWeeks = 8) => {
-    const res = await fetch(`${API_BASE}/data/generate-synthetic?num_students=${numStudents}&num_weeks=${numWeeks}`, {
+    const res = await fetch(`${getApiBase()}/data/generate-synthetic?num_students=${numStudents}&num_weeks=${numWeeks}`, {
       method: "POST",
       headers: authHeaders(),
     });
@@ -235,7 +237,7 @@ export const api = {
   },
 
   runPipeline: async () => {
-    const res = await fetch(`${API_BASE}/pipeline/run`, {
+    const res = await fetch(`${getApiBase()}/pipeline/run`, {
       method: "POST",
       headers: authHeaders(),
     });
@@ -251,7 +253,7 @@ export const api = {
     const headers = {};
     if (authToken) headers["Authorization"] = `Bearer ${authToken}`;
 
-    const res = await fetch(`${API_BASE}/data/upload`, {
+    const res = await fetch(`${getApiBase()}/data/upload`, {
       method: "POST",
       headers,
       body: formData,
@@ -260,8 +262,8 @@ export const api = {
     return res.json();
   },
 
-  getExportLabelsUrl: () => `${API_BASE}/export/labels`,
-  getSampleCsvUrl: (datasetType) => `${API_BASE}/data/sample/${datasetType}`,
+  getExportLabelsUrl: () => `${getApiBase()}/export/labels`,
+  getSampleCsvUrl: (datasetType) => `${getApiBase()}/data/sample/${datasetType}`,
 
   quickLoadSample: async (datasetType) => {
     const formData = new FormData();
@@ -270,7 +272,7 @@ export const api = {
     const headers = {};
     if (authToken) headers["Authorization"] = `Bearer ${authToken}`;
 
-    const res = await fetch(`${API_BASE}/data/quick-load-sample`, {
+    const res = await fetch(`${getApiBase()}/data/quick-load-sample`, {
       method: "POST",
       headers,
       body: formData,
@@ -281,7 +283,7 @@ export const api = {
 
   // AI Chat & Voice Assistant
   sendMessage: async (message, studentId = null, language = "en") => {
-    const res = await fetch(`${API_BASE}/chat`, {
+    const res = await fetch(`${getApiBase()}/chat`, {
       method: "POST",
       headers: authHeaders(),
       body: JSON.stringify({ message, student_id: studentId, language }),
@@ -292,7 +294,7 @@ export const api = {
 
   // Predictive Dropout Timeline
   getStudentTimeline: async (studentId) => {
-    const res = await fetch(`${API_BASE}/students/${studentId}/timeline`, {
+    const res = await fetch(`${getApiBase()}/students/${studentId}/timeline`, {
       headers: authHeaders(),
     });
     if (!res.ok) throw new Error("Failed to load timeline");
@@ -301,7 +303,7 @@ export const api = {
 
   // AI Personalized Study Planner & Tutor
   getStudyPlan: async (studentId, hours = 1.5) => {
-    const res = await fetch(`${API_BASE}/tutor/study-plan`, {
+    const res = await fetch(`${getApiBase()}/tutor/study-plan`, {
       method: "POST",
       headers: authHeaders(),
       body: JSON.stringify({ student_id: studentId, target_hours_per_day: hours }),
@@ -311,7 +313,7 @@ export const api = {
   },
 
   explainConcept: async (subject, topic, grade = 10, language = "en") => {
-    const res = await fetch(`${API_BASE}/tutor/explain`, {
+    const res = await fetch(`${getApiBase()}/tutor/explain`, {
       method: "POST",
       headers: authHeaders(),
       body: JSON.stringify({ subject, topic, grade, language }),
@@ -321,7 +323,7 @@ export const api = {
   },
 
   getPracticeQuestion: async (subject, topic, difficulty = "Medium", language = "en") => {
-    const res = await fetch(`${API_BASE}/tutor/practice-question`, {
+    const res = await fetch(`${getApiBase()}/tutor/practice-question`, {
       method: "POST",
       headers: authHeaders(),
       body: JSON.stringify({ subject, topic, difficulty, language }),
@@ -332,13 +334,13 @@ export const api = {
 
   // Multilingual & Document Intelligence Suite
   getSupportedLanguages: async () => {
-    const res = await fetch(`${API_BASE}/multilingual/languages`);
+    const res = await fetch(`${getApiBase()}/multilingual/languages`);
     if (!res.ok) throw new Error("Failed to load supported languages");
     return res.json();
   },
 
   detectLanguage: async (text) => {
-    const res = await fetch(`${API_BASE}/multilingual/detect`, {
+    const res = await fetch(`${getApiBase()}/multilingual/detect`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text }),
@@ -348,7 +350,7 @@ export const api = {
   },
 
   processDocumentIntel: async (documentText, targetLanguage = "en") => {
-    const res = await fetch(`${API_BASE}/multilingual/document-intel`, {
+    const res = await fetch(`${getApiBase()}/multilingual/document-intel`, {
       method: "POST",
       headers: authHeaders(),
       body: JSON.stringify({ document_text: documentText, target_language: targetLanguage }),
@@ -358,7 +360,7 @@ export const api = {
   },
 
   getMultilingualQuiz: async (subject, topic, language = "en") => {
-    const res = await fetch(`${API_BASE}/multilingual/quiz`, {
+    const res = await fetch(`${getApiBase()}/multilingual/quiz`, {
       method: "POST",
       headers: authHeaders(),
       body: JSON.stringify({ subject, topic, language }),
@@ -368,7 +370,7 @@ export const api = {
   },
 
   generateParentAlert: async (studentId, targetLanguage = "hi") => {
-    const res = await fetch(`${API_BASE}/multilingual/parent-alert`, {
+    const res = await fetch(`${getApiBase()}/multilingual/parent-alert`, {
       method: "POST",
       headers: authHeaders(),
       body: JSON.stringify({ student_id: studentId, target_language: targetLanguage }),
@@ -378,7 +380,7 @@ export const api = {
   },
 
   translateInsight: async (studentId, targetLanguage) => {
-    const res = await fetch(`${API_BASE}/multilingual/translate-insight`, {
+    const res = await fetch(`${getApiBase()}/multilingual/translate-insight`, {
       method: "POST",
       headers: authHeaders(),
       body: JSON.stringify({ student_id: studentId, target_language: targetLanguage }),
@@ -389,13 +391,13 @@ export const api = {
 
   // Groq Llama LLM Integration
   getGroqStatus: async () => {
-    const res = await fetch(`${API_BASE}/llm/status`);
+    const res = await fetch(`${getApiBase()}/llm/status`);
     if (!res.ok) throw new Error("Failed to fetch Groq status");
     return res.json();
   },
 
   updateGroqConfig: async (apiKey, model = "llama-3.3-70b-versatile", persist = true) => {
-    const res = await fetch(`${API_BASE}/llm/config`, {
+    const res = await fetch(`${getApiBase()}/llm/config`, {
       method: "POST",
       headers: authHeaders(),
       body: JSON.stringify({ api_key: apiKey, model, persist }),
@@ -408,7 +410,7 @@ export const api = {
   },
 
   testGroqConnection: async (apiKey = null) => {
-    const res = await fetch(`${API_BASE}/llm/test`, {
+    const res = await fetch(`${getApiBase()}/llm/test`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ api_key: apiKey }),
